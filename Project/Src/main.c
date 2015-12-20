@@ -93,15 +93,6 @@ int main(void)
             printf("%s\r\n",gRxBuf);
             MotorLifter_UsartCmdProc();
         }
-      
-        if(!MotorLifter_XaxisBoundDetectGet()){
-            BSP_MotorControl_HardStop(MOTOR_LIFTER_X_AXIS_DEVICE_ID);
-            BSP_MotorControl_SetHome(MOTOR_LIFTER_X_AXIS_DEVICE_ID);
-        }
-        if(!MotorLifter_YaxisBoundDetectGet()){
-            BSP_MotorControl_HardStop(MOTOR_LIFTER_Y_AXIS_DEVICE_ID);
-            BSP_MotorControl_SetHome(MOTOR_LIFTER_Y_AXIS_DEVICE_ID);
-        }
     };
 }
 
@@ -391,11 +382,6 @@ void Error_Handler(uint16_t error)
   while(1)
   {
   }
-}
-
-static uint32_t MotorLifter_UsartRxPara2Value(uint8_t *rxBuf)
-{
-    return 0;
 }
 
 void ButtonDownProc2(void)

@@ -3,15 +3,20 @@
 #include "motorcontrol.h"
 #include "stm32f4xx_hal.h"
 
-#define MY_UART_RX_DATA_LENTH   5
+#define MY_UART_RX_DATA_LENTH   6
 
-// static uint8_t gTxBuf;
-
-UART_HandleTypeDef Usart2Handle;
 UART_HandleTypeDef Usart1Handle;
+UART_HandleTypeDef Usart2Handle;
 
 uint8_t gRxBuf[MY_UART_RX_DATA_LENTH] = { 0 };
 uint8_t gRxFlag = 0;
+
+typedef struct{
+    enum MOTOR_LIFTER_AXIS_ID id;
+    enum MOTORLIFTER_UART_INS_CMD ins;
+    uint16_t para;
+}MOTORLIFTER_UsartCmd_t;
+static MOTORLIFTER_UsartCmd_t motorlifterUsartCmd;
  
 static volatile uint16_t gLastError;
 
@@ -120,28 +125,116 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
-void MotorLifter_UsartCmdProc(void)
+static uint8_t MotorLifter_Value2Hex(uint8_t value)
 {
-    uint32_t steptogo;
+    uint8_t temp;
     
-    steptogo = ((gRxBuf[1]-'0')<<24)+((gRxBuf[2]-'0')<<16)+((gRxBuf[3]-'0')<<8)+(gRxBuf[4]-'0');
+    if('0' <= value && '9' >= value){
+        temp = value - '0';
+    }else if('a' <= value && 'f' >= value){
+        temp = value - 'a' + 10;
+    }else if('A' <= value && 'F' >= value){
+        temp = value - 'A' + 10;
+    }else{
+        
+    }
     
-    switch(gRxBuf[0]-'0'){
-        case MOTOR_LIFTER_X_AXIS_DEVICE_ID:
-            BSP_MotorControl_GoTo(MOTOR_LIFTER_X_AXIS_DEVICE_ID, steptogo);
+    return temp;
+}
+
+static uint16_t MotorLifter_UsartCmdParaProc(void)
+{
+    uint8_t bit3,bit2,bit1,bit0;
+    uint16_t temp;
+    
+    bit3 = MotorLifter_Value2Hex(gRxBuf[2]);
+    bit2 = MotorLifter_Value2Hex(gRxBuf[3]);
+    bit1 = MotorLifter_Value2Hex(gRxBuf[4]);
+    bit0 = MotorLifter_Value2Hex(gRxBuf[5]);
+    
+    temp = ((uint16_t)bit3<<12) + ((uint16_t)bit2<<8) + ((uint16_t)bit1<<4) + ((uint16_t)bit0);
+    
+    return temp;
+}
+
+static void MotorLifter_UsartCmdInsProc(MOTORLIFTER_UsartCmd_t usartCmd)
+{
+    int32_t temp;
+    
+    switch(usartCmd.ins){
+        case UART_INS_CMD_FORWARD:
+//            BSP_MotorControl_SetDirection(usartCmd.id, FORWARD);
+            temp = usartCmd.para;
+            BSP_MotorControl_GoTo(usartCmd.id, temp);
             break;
-        case MOTOR_LIFTER_Y_AXIS_DEVICE_ID:
-            BSP_MotorControl_GoTo(MOTOR_LIFTER_Y_AXIS_DEVICE_ID, steptogo);
+        case UART_INS_CMD_BACKWARD:
+//            BSP_MotorControl_SetDirection(usartCmd.id, BACKWARD);
+            temp = ~((uint32_t)usartCmd.para)+1;
+            BSP_MotorControl_GoTo(usartCmd.id, temp);
             break;
-        case MOTOR_LIFTER_Z_AXIS_DEVICE_ID:
-            BSP_MotorControl_GoTo(MOTOR_LIFTER_Z_AXIS_DEVICE_ID, steptogo);
+        case UART_INS_CMD_HARDSTOP:
+            BSP_MotorControl_HardStop(usartCmd.id);
             break;
-        case MOTOR_LIFTER_XY_AXIS_DEVICE_ID_SELECT:
-            
+        case UART_INS_CMD_SOFTSTOP:
+            BSP_MotorControl_SoftStop(usartCmd.id);
+            break;
+        case UART_INS_CMD_SETHOME:
+            BSP_MotorControl_SetHome(usartCmd.id);
+            break;
+        case UART_INS_CMD_SETMARK:
+            BSP_MotorControl_SetMark(usartCmd.id);
+            break;
+        case UART_INS_CMD_GOTOPOS:
+            BSP_MotorControl_GoTo(usartCmd.id, (int32_t)usartCmd.para);
+            break;
+        case UART_INS_CMD_GOHOME:
+            BSP_MotorControl_GoHome(usartCmd.id);
+            break;
+        case UART_INS_CMD_GOMARK:
+            BSP_MotorControl_GoMark(usartCmd.id);
+            break;
+        case UART_INS_CMD_RESETPOS:
+            BSP_MotorControl_Run(MOTOR_LIFTER_X_AXIS_DEVICE_ID, FORWARD);
+            BSP_MotorControl_Run(MOTOR_LIFTER_Y_AXIS_DEVICE_ID, FORWARD);
+            break;
+        case UART_INS_CMD_ACCELERATION:
+            BSP_MotorControl_SetAcceleration(usartCmd.id, usartCmd.para);
+            break;
+        case UART_INS_CMD_DECELERATION:
+            BSP_MotorControl_SetDeceleration(usartCmd.id, usartCmd.para);
+            break;
+        case UART_INS_CMD_MAXSPEED:
+            BSP_MotorControl_SetMaxSpeed(usartCmd.id, usartCmd.para);
+            break;
+        case UART_INS_CMD_MINSPEED:
+            BSP_MotorControl_SetMinSpeed(usartCmd.id, usartCmd.para);
+            break;
+        case UART_INS_CMD_STEPMODE:
+            BSP_MotorControl_SelectStepMode((uint8_t)usartCmd.id, (motorStepMode_t)usartCmd.para);
             break;
         default:break;
     }
-    steptogo = 0;
+}
+
+void MotorLifter_UsartCmdProc(void)
+{
+    motorlifterUsartCmd.id = (enum MOTOR_LIFTER_AXIS_ID)(gRxBuf[0] - '0');
+    if(motorlifterUsartCmd.id >= MOTOR_LIFTER_AXIS_DEVICE_ID_BOUND){
+        return;
+    }
+    
+    motorlifterUsartCmd.ins = (enum MOTORLIFTER_UART_INS_CMD)MotorLifter_Value2Hex(gRxBuf[1]);
+    if(motorlifterUsartCmd.ins >= UART_INS_CMD_BOUND){
+        return;
+    }
+    
+    motorlifterUsartCmd.para = MotorLifter_UsartCmdParaProc();
+    
+    MotorLifter_UsartCmdInsProc(motorlifterUsartCmd);
+
+    motorlifterUsartCmd.id = MOTOR_LIFTER_AXIS_DEVICE_ID_BOUND;
+    motorlifterUsartCmd.ins = UART_INS_CMD_BOUND;
+    motorlifterUsartCmd.para = 0;
 }
 
 /**

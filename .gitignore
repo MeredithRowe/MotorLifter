@@ -46,3 +46,6 @@ Project/MDK-ARM/STM32F401RE-Nucleo/STM32F4xx-Nucleo
 .d
 .lnp
 .TMP
+*.TMP
+*.uvoptx
+*.Administrator

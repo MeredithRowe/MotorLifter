@@ -37,16 +37,35 @@
 #define usrUSART_RX_GPIO_PORT              GPIOA 
 #define usrUSART_RX_AF                     GPIO_AF7_USART1
 
+enum MOTORLIFTER_UART_CMD{
+    UART_CMD_ID,
+    UART_CMD_INS,
+    UART_CMD_PARA,
+    UART_CMD_BOUND,
+};
+
+enum MOTORLIFTER_UART_INS_CMD{
+    UART_INS_CMD_FORWARD,       //0
+    UART_INS_CMD_BACKWARD,      //1
+    UART_INS_CMD_HARDSTOP,      //2
+    UART_INS_CMD_SOFTSTOP,      //3
+    UART_INS_CMD_SETHOME,       //4
+    UART_INS_CMD_SETMARK,       //5
+    UART_INS_CMD_GOTOPOS,       //6
+    UART_INS_CMD_GOHOME,        //7
+    UART_INS_CMD_GOMARK,        //8
+    UART_INS_CMD_RESETPOS,      //9
+    UART_INS_CMD_ACCELERATION,  //10
+    UART_INS_CMD_DECELERATION,  //11
+    UART_INS_CMD_MAXSPEED,      //12
+    UART_INS_CMD_MINSPEED,      //13
+    UART_INS_CMD_STEPMODE,      //14
+    UART_INS_CMD_BOUND,
+};
+
 extern UART_HandleTypeDef Usart2Handle;
 extern uint8_t gRxBuf[];
 extern uint8_t gRxFlag;
-
-typedef struct{
-    uint8_t motorId;
-    uint8_t usartCmd;
-    uint32_t stepToGo;
-}MotorLifter_t;
-extern MotorLifter_t motorLifter;
 
 void BSP_UsartInit(void);
 
