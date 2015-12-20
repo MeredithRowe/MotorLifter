@@ -30,3 +30,19 @@
 
 # Debug files
 *.dSYM/
+Project/MDK-ARM/STM32F401RE-Nucleo/startup_stm32f411xe.lst
+*.lst
+Project/MDK-ARM/STM32F401RE-Nucleo/startup_stm32f411xe.lst
+Project/MDK-ARM/STM32F401RE-Nucleo/STM32F4xx-Nucleo
+*.crf
+*.crf
+*.d
+*.lst
+*.dep
+*.htm
+*.map
+*.crf
+*.axf
+.d
+.lnp
+.TMP
